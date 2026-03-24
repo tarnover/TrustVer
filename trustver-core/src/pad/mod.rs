@@ -254,7 +254,7 @@ pub(crate) mod tests {
         let mut artifact_hashes = HashMap::new();
         artifact_hashes.insert(
             "sha256".to_string(),
-            "e3b0c44298fc1c149afbf4c8996fb924".to_string(),
+            "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855".to_string(),
         );
 
         PadDocument {
