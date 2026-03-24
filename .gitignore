@@ -10,6 +10,9 @@
 # OS
 .DS_Store
 
+# TrustVer keys
+.trustver/
+
 # Claude/AI plans and docs
 docs/superpowers/
 docs/specs/

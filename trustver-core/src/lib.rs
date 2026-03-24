@@ -3,3 +3,5 @@ pub mod commit;
 pub mod derive;
 pub mod git;
 pub mod config;
+pub mod pad;
+pub mod key;
