@@ -14,19 +14,65 @@ struct Cli {
 }
 
 #[derive(Subcommand)]
-enum Commands {
+pub(crate) enum Commands {
     /// Initialize a new trustver.toml
-    Init,
+    Init {
+        #[arg(long)]
+        name: Option<String>,
+        #[arg(long)]
+        version: Option<String>,
+    },
     /// Bump the version
-    Bump,
+    Bump {
+        level: String,
+        #[arg(long)]
+        authorship: Option<String>,
+        #[arg(long)]
+        strict: bool,
+        #[arg(long, name = "from")]
+        from_ref: Option<String>,
+        #[arg(long)]
+        tag: bool,
+        #[arg(long)]
+        json: bool,
+    },
     /// Validate a TrustVer version string
-    Validate,
+    Validate {
+        version_string: String,
+        #[arg(long)]
+        quiet: bool,
+        #[arg(long)]
+        json: bool,
+    },
     /// Validate a commit message against TrustVer convention
-    CheckCommit,
+    #[command(name = "check-commit")]
+    CheckCommit {
+        message: Option<String>,
+        #[arg(long)]
+        file: Option<String>,
+        #[arg(long)]
+        json: bool,
+    },
     /// Show provenance audit for a git range
-    Audit,
+    Audit {
+        range: Option<String>,
+        #[arg(long)]
+        json: bool,
+    },
     /// Manage git hooks
-    Hook,
+    Hook {
+        #[command(subcommand)]
+        action: HookAction,
+    },
+}
+
+#[derive(Subcommand)]
+pub(crate) enum HookAction {
+    /// Install the commit-msg hook
+    Install {
+        #[arg(long)]
+        force: bool,
+    },
 }
 
 fn main() {

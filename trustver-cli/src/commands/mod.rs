@@ -1,5 +1,5 @@
 use anyhow::Result;
-use crate::Commands;
+use crate::{Commands, HookAction};
 
 pub mod init;
 pub mod bump;
@@ -10,11 +10,13 @@ pub mod hook;
 
 pub fn run(cmd: Commands) -> Result<()> {
     match cmd {
-        Commands::Init => todo!("init"),
-        Commands::Bump => todo!("bump"),
-        Commands::Validate => todo!("validate"),
-        Commands::CheckCommit => todo!("check-commit"),
-        Commands::Audit => todo!("audit"),
-        Commands::Hook => todo!("hook"),
+        Commands::Init { name, version } => init::run(name, version),
+        Commands::Validate { version_string, quiet, json } => validate::run(&version_string, quiet, json),
+        Commands::CheckCommit { message, file, json } => check_commit::run(message, file, json),
+        Commands::Bump { .. } => todo!("bump"),
+        Commands::Audit { .. } => todo!("audit"),
+        Commands::Hook { action } => match action {
+            HookAction::Install { .. } => todo!("hook install"),
+        },
     }
 }
