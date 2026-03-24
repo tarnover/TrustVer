@@ -13,10 +13,12 @@ pub fn run(cmd: Commands) -> Result<()> {
         Commands::Init { name, version } => init::run(name, version),
         Commands::Validate { version_string, quiet, json } => validate::run(&version_string, quiet, json),
         Commands::CheckCommit { message, file, json } => check_commit::run(message, file, json),
-        Commands::Bump { .. } => todo!("bump"),
-        Commands::Audit { .. } => todo!("audit"),
+        Commands::Bump { level, authorship, strict, from_ref, tag, json } => {
+            bump::run(&level, authorship, strict, from_ref, tag, json)
+        }
+        Commands::Audit { range, json } => audit::run(range, json),
         Commands::Hook { action } => match action {
-            HookAction::Install { .. } => todo!("hook install"),
+            HookAction::Install { force } => hook::install(force),
         },
     }
 }
