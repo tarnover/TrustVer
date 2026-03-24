@@ -98,18 +98,11 @@ Model: claude-opus-4-6
 Reviewer: jascha@tarnover.com
 ```
 
-## Trust Stack Integration
-
-TrustVer is part of the [ThirdKey Trust Stack](https://thirdkey.ai):
-
-- **[SchemaPin](https://schemapin.org)** — ECDSA P-256 signing primitives and `.well-known` key discovery used for PAD signatures
-- **[AgentPin](https://agentpin.org)** — Verifiable agent identity for autonomous releases
-- **[ToolClad](https://toolclad.org)** — Declarative tool contracts for secure command execution in agentic systems
-- **[Symbiont](https://symbiont.dev)** — Runtime policy enforcement against PAD attestations
-
 ## License
 
 Specification: [CC-BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/)
 Tooling: MIT
+
+Copyright 2026 Tarnover, LLC / [ThirdKey AI](https://thirdkey.ai)
 
 Comments, ideas, and PRs welcome.
