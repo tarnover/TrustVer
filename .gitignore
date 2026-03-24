@@ -1,0 +1,16 @@
+# Build artifacts
+/target/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+
+# Claude/AI plans and docs
+docs/superpowers/
+docs/specs/
+docs/plans/
