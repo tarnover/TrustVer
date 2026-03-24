@@ -44,12 +44,14 @@ pub fn generate(
     };
 
     let repo_path = PathBuf::from(".");
-    let pad = generate_pad(&config, &repo_path, &options)
-        .context("failed to generate PAD")?;
+    let pad = generate_pad(&config, &repo_path, &options).context("failed to generate PAD")?;
 
     let out_path = match output {
         Some(ref p) => PathBuf::from(p),
-        None => PathBuf::from(format!("{}-{}.pad.json", config.package_name, config.current_version)),
+        None => PathBuf::from(format!(
+            "{}-{}.pad.json",
+            config.package_name, config.current_version
+        )),
     };
 
     pad.save(&out_path).context("failed to save PAD file")?;
@@ -71,25 +73,24 @@ pub fn sign(
     let signed = if sigstore {
         sign_pad_cosign(&pad, signer, pad_path).context("cosign signing failed")?
     } else {
-        let key_path = key.as_deref().ok_or_else(|| {
-            anyhow::anyhow!("--key is required when not using --sigstore")
-        })?;
-        let private_pem = std::fs::read_to_string(key_path)
-            .context("failed to read private key file")?;
+        let key_path = key
+            .as_deref()
+            .ok_or_else(|| anyhow::anyhow!("--key is required when not using --sigstore"))?;
+        let private_pem =
+            std::fs::read_to_string(key_path).context("failed to read private key file")?;
 
         let resolved_key_id = if let Some(ref kid) = key_id {
             kid.clone()
         } else if let Some(ref pub_key_path) = public_key {
-            let pub_pem = std::fs::read_to_string(pub_key_path)
-                .context("failed to read public key file")?;
+            let pub_pem =
+                std::fs::read_to_string(pub_key_path).context("failed to read public key file")?;
             trustver_core::key::compute_key_id(&pub_pem)
                 .context("failed to compute key ID from public key")?
         } else {
             bail!("either --key-id or --public-key is required to determine the key ID");
         };
 
-        sign_pad(&pad, &private_pem, &resolved_key_id, signer)
-            .context("signing failed")?
+        sign_pad(&pad, &private_pem, &resolved_key_id, signer).context("signing failed")?
     };
 
     signed.save(pad_path).context("failed to save signed PAD")?;
@@ -120,18 +121,14 @@ pub fn attest(
     let detail_value: serde_json::Value = if let Some(ref json_str) = detail {
         serde_json::from_str(json_str).context("failed to parse --detail as JSON")?
     } else if let Some(ref file_path) = detail_file {
-        let contents = std::fs::read_to_string(file_path)
-            .context("failed to read detail file")?;
+        let contents = std::fs::read_to_string(file_path).context("failed to read detail file")?;
         serde_json::from_str(&contents).context("failed to parse detail file as JSON")?
     } else {
         serde_json::json!({})
     };
 
     let sign_key_pem: Option<String> = if let Some(ref key_path) = sign_key {
-        Some(
-            std::fs::read_to_string(key_path)
-                .context("failed to read sign key file")?,
-        )
+        Some(std::fs::read_to_string(key_path).context("failed to read sign key file")?)
     } else {
         None
     };
@@ -167,10 +164,7 @@ pub fn validate(
 
     if verify {
         let pub_pem: Option<String> = if let Some(ref pk_path) = public_key {
-            Some(
-                std::fs::read_to_string(pk_path)
-                    .context("failed to read public key file")?,
-            )
+            Some(std::fs::read_to_string(pk_path).context("failed to read public key file")?)
         } else {
             None
         };
@@ -181,7 +175,10 @@ pub fn validate(
                 Ok(false) => {
                     issues.push(ValidationIssue {
                         severity: Severity::Error,
-                        message: format!("signature[{idx}] verification failed (signer: {})", sig.signer),
+                        message: format!(
+                            "signature[{idx}] verification failed (signer: {})",
+                            sig.signer
+                        ),
                     });
                 }
                 Err(e) => {
@@ -194,8 +191,14 @@ pub fn validate(
         }
     }
 
-    let errors: Vec<&ValidationIssue> = issues.iter().filter(|i| i.severity == Severity::Error).collect();
-    let warnings: Vec<&ValidationIssue> = issues.iter().filter(|i| i.severity == Severity::Warning).collect();
+    let errors: Vec<&ValidationIssue> = issues
+        .iter()
+        .filter(|i| i.severity == Severity::Error)
+        .collect();
+    let warnings: Vec<&ValidationIssue> = issues
+        .iter()
+        .filter(|i| i.severity == Severity::Warning)
+        .collect();
 
     if json {
         let output = serde_json::json!({

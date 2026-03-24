@@ -52,25 +52,32 @@ pub fn run(
             git_log_range(&repo_path, &from, "HEAD").context("failed to read git log")?
         };
 
-        let commit_infos: Vec<CommitInfo> = git_commits.iter().map(|gc| {
-            let full_msg = if gc.body.is_empty() {
-                gc.subject.clone()
-            } else {
-                format!("{}\n\n{}", gc.subject, gc.body)
-            };
-            let parsed = CommitMessage::parse(&full_msg).ok();
-            let tag = parsed.as_ref().and_then(|c| {
-                c.trailers
-                    .get("Authorship")
-                    .and_then(|v| v.parse::<AuthorshipTag>().ok())
-                    .or(c.authorship_tag)
-            });
-            let has_reviewer = parsed
-                .as_ref()
-                .map(|c| c.trailers.contains_key("Reviewer"))
-                .unwrap_or(false);
-            CommitInfo { tag, lines_changed: gc.lines_changed(), has_reviewer }
-        }).collect();
+        let commit_infos: Vec<CommitInfo> = git_commits
+            .iter()
+            .map(|gc| {
+                let full_msg = if gc.body.is_empty() {
+                    gc.subject.clone()
+                } else {
+                    format!("{}\n\n{}", gc.subject, gc.body)
+                };
+                let parsed = CommitMessage::parse(&full_msg).ok();
+                let tag = parsed.as_ref().and_then(|c| {
+                    c.trailers
+                        .get("Authorship")
+                        .and_then(|v| v.parse::<AuthorshipTag>().ok())
+                        .or(c.authorship_tag)
+                });
+                let has_reviewer = parsed
+                    .as_ref()
+                    .map(|c| c.trailers.contains_key("Reviewer"))
+                    .unwrap_or(false);
+                CommitInfo {
+                    tag,
+                    lines_changed: gc.lines_changed(),
+                    has_reviewer,
+                }
+            })
+            .collect();
 
         let result = derive_authorship(&commit_infos, effective_strict)
             .context("authorship derivation failed")?;
@@ -83,7 +90,9 @@ pub fn run(
     let new_version = config.current_version.bump(bump_level, authorship);
     let old_version = config.current_version.to_string();
     config.current_version = new_version.clone();
-    config.save(&config_path).context("failed to update trustver.toml")?;
+    config
+        .save(&config_path)
+        .context("failed to update trustver.toml")?;
 
     if create_tag {
         let tag_name = format!(
@@ -104,13 +113,16 @@ pub fn run(
     }
 
     if json {
-        println!("{}", serde_json::json!({
-            "old_version": old_version,
-            "new_version": new_version.to_string(),
-            "bump_level": level,
-            "authorship": authorship.to_string(),
-            "overridden": authorship_override.is_some(),
-        }));
+        println!(
+            "{}",
+            serde_json::json!({
+                "old_version": old_version,
+                "new_version": new_version.to_string(),
+                "bump_level": level,
+                "authorship": authorship.to_string(),
+                "overridden": authorship_override.is_some(),
+            })
+        );
     } else {
         println!("{old_version} -> {new_version}");
     }

@@ -16,8 +16,7 @@ pub fn append_attestation(
     detail: serde_json::Value,
     sign_key_pem: Option<&str>,
 ) -> Result<PadDocument, PadError> {
-    let timestamp =
-        chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Secs, true);
+    let timestamp = chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Secs, true);
 
     let signature = if let Some(key_pem) = sign_key_pem {
         let content = serde_json::json!({

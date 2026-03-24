@@ -1,7 +1,7 @@
-pub mod version;
 pub mod commit;
+pub mod config;
 pub mod derive;
 pub mod git;
-pub mod config;
-pub mod pad;
 pub mod key;
+pub mod pad;
+pub mod version;

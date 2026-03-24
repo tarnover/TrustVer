@@ -3,7 +3,8 @@ use predicates::prelude::*;
 
 #[test]
 fn validate_valid_version() {
-    Command::cargo_bin("trustver").unwrap()
+    Command::cargo_bin("trustver")
+        .unwrap()
         .args(["validate", "2.4.0+hrai"])
         .assert()
         .success()
@@ -12,7 +13,8 @@ fn validate_valid_version() {
 
 #[test]
 fn validate_invalid_version() {
-    Command::cargo_bin("trustver").unwrap()
+    Command::cargo_bin("trustver")
+        .unwrap()
         .args(["validate", "2.4.0"])
         .assert()
         .code(1);
@@ -20,7 +22,8 @@ fn validate_invalid_version() {
 
 #[test]
 fn validate_quiet_mode() {
-    Command::cargo_bin("trustver").unwrap()
+    Command::cargo_bin("trustver")
+        .unwrap()
         .args(["validate", "--quiet", "2.4.0+hrai"])
         .assert()
         .success()
@@ -29,7 +32,8 @@ fn validate_quiet_mode() {
 
 #[test]
 fn validate_json_mode() {
-    Command::cargo_bin("trustver").unwrap()
+    Command::cargo_bin("trustver")
+        .unwrap()
         .args(["validate", "--json", "2.4.0+hrai"])
         .assert()
         .success()

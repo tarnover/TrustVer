@@ -139,13 +139,7 @@ fn parse_log_entries(output: &str) -> Vec<(String, String, String)> {
 pub fn git_latest_tag(repo_path: &Path, pattern: &str) -> Result<Option<String>, GitError> {
     let result = run_git(
         repo_path,
-        &[
-            "describe",
-            "--tags",
-            "--abbrev=0",
-            "--match",
-            pattern,
-        ],
+        &["describe", "--tags", "--abbrev=0", "--match", pattern],
     );
 
     match result {
@@ -156,11 +150,7 @@ pub fn git_latest_tag(repo_path: &Path, pattern: &str) -> Result<Option<String>,
 }
 
 /// Return commits in `from..to` (exclusive of `from`, inclusive of `to`).
-pub fn git_log_range(
-    repo_path: &Path,
-    from: &str,
-    to: &str,
-) -> Result<Vec<GitCommit>, GitError> {
+pub fn git_log_range(repo_path: &Path, from: &str, to: &str) -> Result<Vec<GitCommit>, GitError> {
     let range = format!("{from}..{to}");
     git_log_internal(repo_path, Some(&range))
 }
@@ -170,10 +160,7 @@ pub fn git_log_all(repo_path: &Path) -> Result<Vec<GitCommit>, GitError> {
     git_log_internal(repo_path, None)
 }
 
-fn git_log_internal(
-    repo_path: &Path,
-    range: Option<&str>,
-) -> Result<Vec<GitCommit>, GitError> {
+fn git_log_internal(repo_path: &Path, range: Option<&str>) -> Result<Vec<GitCommit>, GitError> {
     // Build the log command for subject/body.
     let format = "--format=%H%n%s%n%b%n---END-COMMIT---";
     let mut log_args: Vec<&str> = vec!["log"];
@@ -205,10 +192,8 @@ fn git_log_internal(
         if hash.is_empty() {
             continue;
         }
-        let (lines_added, lines_deleted) = numstat_map
-            .get(hash.as_str())
-            .copied()
-            .unwrap_or((0, 0));
+        let (lines_added, lines_deleted) =
+            numstat_map.get(hash.as_str()).copied().unwrap_or((0, 0));
 
         commits.push(GitCommit {
             hash,

@@ -10,7 +10,8 @@ pub fn run(message: Option<String>, file: Option<String>, json: bool) -> Result<
             .with_context(|| format!("failed to read commit message file: {path}"))?
     } else {
         let mut buf = String::new();
-        std::io::stdin().read_to_string(&mut buf)
+        std::io::stdin()
+            .read_to_string(&mut buf)
             .context("failed to read from stdin")?;
         buf
     };
@@ -24,11 +25,14 @@ pub fn run(message: Option<String>, file: Option<String>, json: bool) -> Result<
         Ok(c) => c,
         Err(e) => {
             if json {
-                println!("{}", serde_json::json!({
-                    "valid": false,
-                    "errors": [e.to_string()],
-                    "warnings": [],
-                }));
+                println!(
+                    "{}",
+                    serde_json::json!({
+                        "valid": false,
+                        "errors": [e.to_string()],
+                        "warnings": [],
+                    })
+                );
             } else {
                 eprintln!("Parse error: {e}");
             }
@@ -37,15 +41,24 @@ pub fn run(message: Option<String>, file: Option<String>, json: bool) -> Result<
     };
 
     let issues = commit.validate();
-    let errors: Vec<_> = issues.iter().filter(|i| i.severity == Severity::Error).collect();
-    let warnings: Vec<_> = issues.iter().filter(|i| i.severity == Severity::Warning).collect();
+    let errors: Vec<_> = issues
+        .iter()
+        .filter(|i| i.severity == Severity::Error)
+        .collect();
+    let warnings: Vec<_> = issues
+        .iter()
+        .filter(|i| i.severity == Severity::Warning)
+        .collect();
 
     if json {
-        println!("{}", serde_json::json!({
-            "valid": errors.is_empty(),
-            "errors": errors.iter().map(|i| &i.message).collect::<Vec<_>>(),
-            "warnings": warnings.iter().map(|i| &i.message).collect::<Vec<_>>(),
-        }));
+        println!(
+            "{}",
+            serde_json::json!({
+                "valid": errors.is_empty(),
+                "errors": errors.iter().map(|i| &i.message).collect::<Vec<_>>(),
+                "warnings": warnings.iter().map(|i| &i.message).collect::<Vec<_>>(),
+            })
+        );
     } else {
         for e in &errors {
             eprintln!("ERROR: {}", e.message);

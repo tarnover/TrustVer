@@ -191,9 +191,12 @@ mod tests {
         assert_eq!(signed.signatures[0].algorithm, "ECDSA-P256");
         assert_eq!(signed.signatures[0].signer, "test@test.com");
 
-        let verified =
-            verify_pad_signature(&signed, &signed.signatures[0], Some(&keypair.public_key_pem))
-                .unwrap();
+        let verified = verify_pad_signature(
+            &signed,
+            &signed.signatures[0],
+            Some(&keypair.public_key_pem),
+        )
+        .unwrap();
         assert!(verified);
     }
 

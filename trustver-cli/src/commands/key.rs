@@ -4,8 +4,7 @@ use trustver_core::key::generate_keypair;
 
 pub fn generate(output_dir: &str, name: &str) -> Result<()> {
     let dir = PathBuf::from(output_dir);
-    let result = generate_keypair(&dir, name)
-        .context("failed to generate keypair")?;
+    let result = generate_keypair(&dir, name).context("failed to generate keypair")?;
 
     println!("Generated ECDSA P-256 keypair:");
     println!("  Private key: {}", result.private_key_path.display());

@@ -3,7 +3,11 @@ use clap::{Parser, Subcommand};
 mod commands;
 
 #[derive(Parser)]
-#[command(name = "trustver", version, about = "TrustVer CLI — provenance-aware versioning")]
+#[command(
+    name = "trustver",
+    version,
+    about = "TrustVer CLI — provenance-aware versioning"
+)]
 struct Cli {
     /// Disable colored output
     #[arg(long, global = true)]

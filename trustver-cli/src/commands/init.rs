@@ -22,7 +22,9 @@ pub fn run(name: Option<String>, version: Option<String>) -> Result<()> {
         config.current_version = v.parse().context("invalid version string")?;
     }
 
-    config.save(&config_path).context("failed to write trustver.toml")?;
+    config
+        .save(&config_path)
+        .context("failed to write trustver.toml")?;
     println!("Created trustver.toml");
     println!("  package: {}", config.package_name);
     println!("  version: {}", config.current_version);

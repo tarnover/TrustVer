@@ -235,16 +235,28 @@ mod tests {
     fn parse_all_authorship_tags() {
         assert_eq!("h".parse::<AuthorshipTag>().unwrap(), AuthorshipTag::H);
         assert_eq!("ai".parse::<AuthorshipTag>().unwrap(), AuthorshipTag::Ai);
-        assert_eq!("hrai".parse::<AuthorshipTag>().unwrap(), AuthorshipTag::Hrai);
+        assert_eq!(
+            "hrai".parse::<AuthorshipTag>().unwrap(),
+            AuthorshipTag::Hrai
+        );
         assert_eq!("aih".parse::<AuthorshipTag>().unwrap(), AuthorshipTag::Aih);
-        assert_eq!("auto".parse::<AuthorshipTag>().unwrap(), AuthorshipTag::Auto);
+        assert_eq!(
+            "auto".parse::<AuthorshipTag>().unwrap(),
+            AuthorshipTag::Auto
+        );
         assert_eq!("mix".parse::<AuthorshipTag>().unwrap(), AuthorshipTag::Mix);
     }
 
     #[test]
     fn authorship_tag_display_roundtrip() {
-        for tag in [AuthorshipTag::H, AuthorshipTag::Ai, AuthorshipTag::Hrai,
-                     AuthorshipTag::Aih, AuthorshipTag::Auto, AuthorshipTag::Mix] {
+        for tag in [
+            AuthorshipTag::H,
+            AuthorshipTag::Ai,
+            AuthorshipTag::Hrai,
+            AuthorshipTag::Aih,
+            AuthorshipTag::Auto,
+            AuthorshipTag::Mix,
+        ] {
             let s = tag.to_string();
             assert_eq!(s.parse::<AuthorshipTag>().unwrap(), tag);
         }
@@ -293,14 +305,14 @@ mod tests {
 
     #[test]
     fn reject_invalid_versions() {
-        assert!("2.4.0".parse::<TrustVersion>().is_err());          // missing authorship
-        assert!("01.4.0+h".parse::<TrustVersion>().is_err());       // leading zero
-        assert!("2.04.0+h".parse::<TrustVersion>().is_err());       // leading zero
-        assert!("2.4.0+unknown".parse::<TrustVersion>().is_err());  // bad tag
-        assert!("2.4+h".parse::<TrustVersion>().is_err());          // missing micro
-        assert!("+h".parse::<TrustVersion>().is_err());              // no version
-        assert!("".parse::<TrustVersion>().is_err());                // empty
-        assert!("abc+h".parse::<TrustVersion>().is_err());          // non-numeric
+        assert!("2.4.0".parse::<TrustVersion>().is_err()); // missing authorship
+        assert!("01.4.0+h".parse::<TrustVersion>().is_err()); // leading zero
+        assert!("2.04.0+h".parse::<TrustVersion>().is_err()); // leading zero
+        assert!("2.4.0+unknown".parse::<TrustVersion>().is_err()); // bad tag
+        assert!("2.4+h".parse::<TrustVersion>().is_err()); // missing micro
+        assert!("+h".parse::<TrustVersion>().is_err()); // no version
+        assert!("".parse::<TrustVersion>().is_err()); // empty
+        assert!("abc+h".parse::<TrustVersion>().is_err()); // non-numeric
     }
 
     #[test]

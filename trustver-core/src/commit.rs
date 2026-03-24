@@ -134,10 +134,9 @@ impl CommitMessage {
         }
 
         // --- Determine effective tag for further checks ---
-        let effective_tag: Option<AuthorshipTag> = self.authorship_tag.or_else(|| {
-            authorship_trailer
-                .and_then(|v| AuthorshipTag::from_str(v).ok())
-        });
+        let effective_tag: Option<AuthorshipTag> = self
+            .authorship_tag
+            .or_else(|| authorship_trailer.and_then(|v| AuthorshipTag::from_str(v).ok()));
 
         let ai_involved = matches!(
             effective_tag,
@@ -171,8 +170,7 @@ impl CommitMessage {
                 });
             }
 
-            if effective_tag == Some(AuthorshipTag::Auto)
-                && !self.trailers.contains_key("Agent-Id")
+            if effective_tag == Some(AuthorshipTag::Auto) && !self.trailers.contains_key("Agent-Id")
             {
                 issues.push(ValidationIssue {
                     severity: Severity::Warning,
@@ -213,14 +211,10 @@ fn extract_tag(subject: &str) -> (String, Option<AuthorshipTag>) {
 }
 
 /// Parse `type[(scope)]: description` from the subject (after tag removal).
-fn parse_conventional(
-    subject: &str,
-) -> Result<(String, Option<String>, String), CommitParseError> {
+fn parse_conventional(subject: &str) -> Result<(String, Option<String>, String), CommitParseError> {
     // Split on first ": "
     let colon_space = subject.find(": ").ok_or_else(|| {
-        CommitParseError::InvalidSubject(format!(
-            "missing ': ' separator in subject: {subject}"
-        ))
+        CommitParseError::InvalidSubject(format!("missing ': ' separator in subject: {subject}"))
     })?;
 
     let prefix = &subject[..colon_space];

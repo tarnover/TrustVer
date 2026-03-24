@@ -5,9 +5,14 @@ use tempfile::TempDir;
 #[test]
 fn hook_install_creates_file() {
     let dir = TempDir::new().unwrap();
-    std::process::Command::new("git").args(["init"]).current_dir(dir.path()).output().unwrap();
+    std::process::Command::new("git")
+        .args(["init"])
+        .current_dir(dir.path())
+        .output()
+        .unwrap();
 
-    Command::cargo_bin("trustver").unwrap()
+    Command::cargo_bin("trustver")
+        .unwrap()
         .args(["hook", "install"])
         .current_dir(dir.path())
         .assert()
@@ -23,10 +28,15 @@ fn hook_install_creates_file() {
 #[test]
 fn hook_install_refuses_overwrite() {
     let dir = TempDir::new().unwrap();
-    std::process::Command::new("git").args(["init"]).current_dir(dir.path()).output().unwrap();
+    std::process::Command::new("git")
+        .args(["init"])
+        .current_dir(dir.path())
+        .output()
+        .unwrap();
     std::fs::write(dir.path().join(".git/hooks/commit-msg"), "existing").unwrap();
 
-    Command::cargo_bin("trustver").unwrap()
+    Command::cargo_bin("trustver")
+        .unwrap()
         .args(["hook", "install"])
         .current_dir(dir.path())
         .assert()
@@ -36,10 +46,15 @@ fn hook_install_refuses_overwrite() {
 #[test]
 fn hook_install_force_overwrites() {
     let dir = TempDir::new().unwrap();
-    std::process::Command::new("git").args(["init"]).current_dir(dir.path()).output().unwrap();
+    std::process::Command::new("git")
+        .args(["init"])
+        .current_dir(dir.path())
+        .output()
+        .unwrap();
     std::fs::write(dir.path().join(".git/hooks/commit-msg"), "existing").unwrap();
 
-    Command::cargo_bin("trustver").unwrap()
+    Command::cargo_bin("trustver")
+        .unwrap()
         .args(["hook", "install", "--force"])
         .current_dir(dir.path())
         .assert()

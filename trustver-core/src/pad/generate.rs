@@ -146,8 +146,7 @@ pub fn generate_pad(
     };
 
     // 6. Timestamp
-    let timestamp =
-        chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Secs, true);
+    let timestamp = chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Secs, true);
 
     // 7. Assemble document
     let pad = PadDocument {
