@@ -426,6 +426,8 @@ The PAD is a signed JSON document published alongside each release. It is the au
 
 **Scope is release-time metadata in the PAD.** Unlike earlier iterations of this spec, scope (stable, rc, preview, experimental, sandbox) is not in the version string. SemVer already has conventions for pre-release identifiers (`-alpha`, `-rc.1`), and duplicating them in a new tag adds no value.
 
+**Canonical signing format.** When computing signatures over PAD content, the signable content is the PAD document with the `signatures` array removed, serialized as canonical JSON: keys sorted lexicographically at all nesting levels, no whitespace, no trailing commas. This ensures signature stability regardless of JSON formatting or field ordering in the source document.
+
 ---
 
 ### 6. Attestation Types
@@ -510,7 +512,15 @@ Package registries MAY embed PAD data directly in their metadata APIs (e.g., a `
 
 #### 9.1. SchemaPin Integration
 
-When a tool or API is versioned with TrustVer, the artifact hash in the PAD SHOULD be cross-referenced against the schema hash registered in SchemaPin's `.well-known/schemapin.json`. This provides independent verification that the artifact content matches the claimed schema.
+PAD signatures SHOULD use SchemaPin's ECDSA P-256 signing primitives for cryptographic operations. Specifically:
+
+- **Signing:** Use SchemaPin's `sign_data()` to sign the canonical JSON representation of the PAD (see §5.2). The resulting base64-encoded signature is stored in the PAD's `signatures` array with `algorithm: "ECDSA-P256"`.
+- **Key identity:** The `key_id` field in PAD signatures SHOULD be the SHA-256 fingerprint of the signer's public key, computed via SchemaPin's `calculate_key_id()`. This fingerprint is stable and verifiable without fetching the full key.
+- **Key discovery:** The signer's public key SHOULD be discoverable via the `.well-known/schemapin.json` endpoint (RFC 8615) hosted at the signer's domain. This enables automated key retrieval for PAD verification.
+- **Verification:** Use SchemaPin's `verify_signature()` to verify PAD signatures against the signer's public key, obtained either locally or via `.well-known` discovery.
+- **Artifact cross-referencing:** When a tool or API is versioned with TrustVer, the artifact hash in the PAD SHOULD be cross-referenced against the schema hash registered in SchemaPin's `.well-known/schemapin.json`. This provides independent verification that the artifact content matches the claimed schema.
+
+SchemaPin integration is RECOMMENDED but not required. PADs MAY use alternative signing mechanisms (e.g., Sigstore/cosign for CI-produced attestations) provided the `algorithm` field in the signature accurately identifies the scheme used.
 
 #### 9.2. AgentPin Integration
 
@@ -600,10 +610,11 @@ A `trustver` CLI tool SHOULD be provided for:
 - Bumping version numbers with EffVer semantics and auto-derived authorship tagging from commit history.
 - Validating commit messages against the TrustVer commit convention.
 - Generating provenance summaries from commit ranges (`trustver audit v2.3.0..v2.4.0`).
-- Generating PADs from build context (CI environment variables, git metadata, AI tool logs), including commit-level provenance records.
-- Signing PADs (integration with Sigstore, local keys, or HSMs).
-- Validating version strings and PAD structure.
-- Appending attestations to existing PADs.
+- Generating PADs from build context (`trustver pad generate`), including auto-detection of CI environment, artifact hashing, and authorship detail from commit history.
+- Signing PADs with local ECDSA keys via SchemaPin (`trustver pad sign`) or Sigstore/cosign (`trustver pad sign --sigstore`).
+- Validating version strings and PAD structure, with optional cryptographic signature verification (`trustver pad validate --verify`).
+- Appending attestations to existing PADs with optional per-attestation signatures (`trustver pad attest`).
+- Generating ECDSA P-256 keypairs for PAD signing (`trustver key generate`).
 - Querying PAD metadata for a given package/version.
 
 Companion integrations SHOULD be provided for:
