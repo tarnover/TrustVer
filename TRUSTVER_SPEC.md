@@ -11,9 +11,9 @@
 
 ## Abstract
 
-TrustVer is a versioning and provenance specification for software developed in environments where AI agents, human developers, and automated systems co-author code. It combines a human-friendly version string — EffVer effort semantics plus an authorship tag — with a mandatory **Provenance Attestation Document (PAD)** that carries the full trust metadata as a signed sidecar.
+TrustVer is a versioning and provenance specification for software developed in environments where AI agents, human developers, and automated systems co-author code. It combines a human-friendly version string — EffVer effort semantics plus an authorship tag — with a **commit convention** for capturing ground-truth provenance at the point of creation, and a mandatory **Provenance Attestation Document (PAD)** that carries the full trust metadata as a signed sidecar.
 
-The version string answers two questions at a glance: **how much effort does this update require?** and **who or what wrote it?** The PAD answers everything else: verification status, artifact identity, attestation history, and build provenance.
+The version string answers two questions at a glance: **how much effort does this update require?** and **who or what wrote it?** Commits carry the ground-truth authorship data. The PAD answers everything else: verification status, artifact identity, attestation history, and build provenance.
 
 ```
 2.4.0+hrai
@@ -140,11 +140,198 @@ The authorship tag encodes the predominant mode of production for the changeset 
 
 ---
 
-### 4. Provenance Attestation Document (PAD)
+### 4. Commit Convention
+
+Authorship is most accurately captured at the commit level — when the developer or agent actually knows how the code was produced. The release-level authorship tag (§3) is then *derived* from the commit history rather than declared by hand.
+
+TrustVer defines a commit message convention compatible with [Conventional Commits](https://www.conventionalcommits.org/) that embeds authorship as ground-truth metadata.
+
+#### 4.1. Commit Message Format
+
+```
+<type>(<scope>): <description> [<authorship-tag>]
+
+<optional body>
+
+Authorship: <tag>
+Model: <model identifier, if applicable>
+Contribution: <percentage or qualitative description>
+Reviewer: <identity, if applicable>
+Agent-Id: <AgentPin URI, if applicable>
+```
+
+**Examples:**
+
+```
+feat(auth): add OAuth2 PKCE flow [hrai]
+
+AI-generated implementation of PKCE extension for the OAuth2 auth module.
+Reviewed and modified by jascha@tarnover.com.
+
+Authorship: hrai
+Model: claude-opus-4-6
+Contribution: ~85% AI-generated
+Reviewer: jascha@tarnover.com
+```
+
+```
+fix(parser): handle nested brackets in config values [h]
+
+Edge case found during manual testing. Hand-written fix.
+
+Authorship: h
+```
+
+```
+feat(api): implement rate limiting middleware [auto]
+
+Autonomously generated and tested by deployment agent.
+
+Authorship: auto
+Model: claude-opus-4-6
+Agent-Id: did:web:agents.thirdkey.ai#deploy-bot-1
+Contribution: 100% AI-generated
+```
+
+```
+refactor(db): migrate connection pooling to bb8 [aih]
+
+Human-driven refactor using AI for boilerplate generation
+and test scaffolding.
+
+Authorship: aih
+Model: claude-sonnet-4-6
+Contribution: ~30% AI-generated (boilerplate, tests)
+Reviewer: jascha@tarnover.com
+```
+
+#### 4.2. Subject Line Tag
+
+The `[authorship-tag]` in the subject line is REQUIRED for TrustVer-conformant commits. It uses the same tag vocabulary as §3 (`h`, `ai`, `hrai`, `aih`, `auto`, `mix`).
+
+The subject line tag is the human-readable signal. It shows up in `git log --oneline`, PR titles, and changelog generators without any special tooling:
+
+```
+$ git log --oneline v2.3.0..v2.4.0
+f4a2c1e feat(auth): add OAuth2 PKCE flow [hrai]
+b7d9e3a fix(parser): handle nested brackets [h]
+3c8f1d2 feat(api): rate limiting middleware [auto]
+a1e5b4f refactor(db): migrate to bb8 pool [aih]
+9d2c7f8 docs: update API reference [hrai]
+```
+
+At a glance, you can see the provenance profile of a release range. No tooling required — just `git log`.
+
+#### 4.3. Footer Metadata
+
+The commit body footer carries structured metadata using [git-trailer](https://git-scm.com/docs/git-interpret-trailers) conventions. The following fields are defined:
+
+| Field | Required | Description |
+|---|---|---|
+| `Authorship` | REQUIRED | Tag from §3 vocabulary. MUST match the subject line tag. |
+| `Model` | RECOMMENDED when AI-involved | Identifier of the AI model used (e.g., `claude-opus-4-6`, `gpt-4o`) |
+| `Contribution` | RECOMMENDED when AI-involved | Approximate AI contribution (e.g., `~85% AI-generated`, `boilerplate only`) |
+| `Reviewer` | REQUIRED for `hrai` | Identity of the human reviewer |
+| `Agent-Id` | RECOMMENDED for `auto` | AgentPin URI or other verifiable agent identity |
+
+Footer fields are machine-parseable via `git log --format='%(trailers)'` and standard trailer-parsing libraries.
+
+#### 4.4. Deriving Release Authorship from Commits
+
+The `trustver bump` command SHOULD derive the release-level authorship tag by scanning commits since the last release. The aggregation algorithm:
+
+1. **Collect** all commits in the range `<last-release-tag>..HEAD`.
+2. **Extract** the `Authorship` trailer (or subject line tag as fallback) from each commit.
+3. **Weight** by lines changed (insertions + deletions) per commit. Merge commits and commits touching only non-code files (docs, CI config) MAY be excluded or down-weighted.
+4. **Apply threshold rules:**
+
+| Condition | Release Tag |
+|---|---|
+| ≥95% of weighted commits are `h` | `h` |
+| ≥80% weighted are `ai` or `hrai`, and all AI commits have `Reviewer` | `hrai` |
+| ≥80% weighted are `ai` or `auto`, missing human review | `ai` |
+| ≥80% weighted are `aih` | `aih` |
+| ≥80% weighted are `auto` | `auto` |
+| No single tag reaches 80% | `mix` |
+
+5. **The maintainer MAY override** the computed tag when cutting the release, but overrides MUST be documented in the PAD with a rationale. This handles edge cases like "90% of the lines changed were AI-generated test fixtures, but the 10% human-written code is the actual logic."
+
+#### 4.5. Provenance Auditing via Git
+
+The commit convention enables powerful provenance queries using standard git tooling:
+
+```bash
+# Authorship summary for a release range
+git log v2.3.0..v2.4.0 --format='%(trailers:key=Authorship,valueonly)' | sort | uniq -c | sort -rn
+
+# All autonomous agent commits
+git log --all --grep='\[auto\]' --oneline
+
+# AI-involved commits by a specific model
+git log --all --format='%H %(trailers:key=Model,valueonly)' | grep 'claude-opus'
+
+# Commits with no human review (potential risk)
+git log v2.3.0..v2.4.0 --grep='\[ai\]\|\[auto\]' --oneline
+
+# Lines of code by authorship type in a range
+for tag in h ai hrai aih auto mix; do
+  echo -n "$tag: "
+  git log v2.3.0..v2.4.0 --grep="\[$tag\]" --numstat --format='' | \
+    awk '{s+=$1+$2} END {print s+0}'
+done
+```
+
+#### 4.6. Integration with Existing Tooling
+
+The commit convention is designed to layer on top of Conventional Commits without breaking existing tools:
+
+- **commitlint:** Add a custom rule to validate the `[tag]` suffix and footer fields.
+- **semantic-release / release-please:** The `[tag]` is inside the description field and does not interfere with type/scope parsing. A plugin can extract it for PAD generation.
+- **changelog generators:** The tag naturally flows into changelogs. A TrustVer-aware generator can group entries by authorship.
+- **GitHub / GitLab:** The tag shows up in PR titles, merge commit messages, and commit lists without any platform changes.
+
+#### 4.7. Commit-Level PAD Records
+
+For projects requiring fine-grained provenance, the PAD MAY include a `commit_provenance` array that records per-commit authorship data, providing a complete audit trail from individual commits through to the release:
+
+```json
+{
+  "commit_provenance": [
+    {
+      "commit": "f4a2c1e...",
+      "authorship": "hrai",
+      "model": "claude-opus-4-6",
+      "contribution_pct": 85,
+      "reviewer": "jascha@tarnover.com",
+      "lines_changed": 342
+    },
+    {
+      "commit": "b7d9e3a...",
+      "authorship": "h",
+      "lines_changed": 12
+    },
+    {
+      "commit": "3c8f1d2...",
+      "authorship": "auto",
+      "model": "claude-opus-4-6",
+      "agent_id": "did:web:agents.thirdkey.ai#deploy-bot-1",
+      "lines_changed": 187
+    }
+  ],
+  "derived_tag": "mix",
+  "override": null
+}
+```
+
+This bridges the gap between commit-level ground truth and release-level summary, and directly supports the differential provenance goal described in §14.
+
+---
+
+### 5. Provenance Attestation Document (PAD)
 
 The PAD is a signed JSON document published alongside each release. It is the authoritative record of a release's full trust posture. The version string carries effort and authorship; the PAD carries everything else.
 
-#### 4.1. PAD Structure
+#### 5.1. PAD Structure
 
 ```json
 {
@@ -229,19 +416,19 @@ The PAD is a signed JSON document published alongside each release. It is the au
 }
 ```
 
-#### 4.2. Key Design Decisions
+#### 5.2. Key Design Decisions
 
 **Attestations are append-only.** The version `2.4.0+hrai` is immutable — it always refers to the same code with the same authorship. But the PAD's attestation list grows over time as new verification is applied. The release ships on day 1 with CI test results. A manual audit on day 7 appends a new entry. A formal verification pass on day 30 appends another. Each attestation is independently signed by the attester, making the PAD a verifiable audit trail.
 
 **Artifact hashes live in the PAD, not the version string.** The PAD carries full SHA-256 hashes of release artifacts, providing content-addressable identity without polluting the human-readable version. Trust infrastructure pins to the PAD hash, not the version number.
 
-**Authorship appears in both the string and the PAD.** The version string carries the tag (`hrai`) for at-a-glance visibility. The PAD carries the tag plus structured detail (model, contribution percentage, reviewers). The PAD is the source of truth; the version string is the summary.
+**Authorship appears in both the string and the PAD.** The version string carries the tag (`hrai`) for at-a-glance visibility. The PAD carries the tag plus structured detail (model, contribution percentage, reviewers). When the commit convention (§4) is in use, the release-level tag is auto-derived from commit history, and the PAD MAY include per-commit provenance records (§4.7) for full audit traceability. The PAD is the source of truth; the version string is the summary.
 
 **Scope is release-time metadata in the PAD.** Unlike earlier iterations of this spec, scope (stable, rc, preview, experimental, sandbox) is not in the version string. SemVer already has conventions for pre-release identifiers (`-alpha`, `-rc.1`), and duplicating them in a new tag adds no value.
 
 ---
 
-### 5. Attestation Types
+### 6. Attestation Types
 
 Attestations are verification records appended to a PAD over a release's lifetime. Each is independently signed.
 
@@ -272,7 +459,7 @@ Attestation types are extensible. Custom types SHOULD use a namespaced format: `
 
 ---
 
-### 6. Scope
+### 7. Scope
 
 The PAD's `scope` field indicates the release's intended deployment context:
 
@@ -288,11 +475,11 @@ Scope is set at release time and is immutable within the PAD.
 
 ---
 
-### 7. PAD Discovery and Distribution
+### 8. PAD Discovery and Distribution
 
 PADs MUST be discoverable by tooling. TrustVer defines three distribution mechanisms (implementors MUST support at least one):
 
-#### 7.1. Sidecar File
+#### 8.1. Sidecar File
 
 Publish the PAD alongside the release artifact:
 
@@ -301,7 +488,7 @@ mylib-2.4.0.tar.gz
 mylib-2.4.0.tar.gz.pad.json
 ```
 
-#### 7.2. Well-Known Endpoint
+#### 8.2. Well-Known Endpoint
 
 ```
 https://<registry-or-domain>/.well-known/trustver/<package>/<version>.pad.json
@@ -313,23 +500,23 @@ Example:
 https://registry.npmjs.org/.well-known/trustver/mylib/2.4.0.pad.json
 ```
 
-#### 7.3. Registry Metadata
+#### 8.3. Registry Metadata
 
 Package registries MAY embed PAD data directly in their metadata APIs (e.g., a `trustver_pad` field in npm package version metadata).
 
 ---
 
-### 8. Trust Infrastructure Integration
+### 9. Trust Infrastructure Integration
 
-#### 8.1. SchemaPin Integration
+#### 9.1. SchemaPin Integration
 
 When a tool or API is versioned with TrustVer, the artifact hash in the PAD SHOULD be cross-referenced against the schema hash registered in SchemaPin's `.well-known/schemapin.json`. This provides independent verification that the artifact content matches the claimed schema.
 
-#### 8.2. AgentPin Integration
+#### 9.2. AgentPin Integration
 
 When an AI agent publishes a release with authorship tag `ai` or `auto`, the agent SHOULD have a valid AgentPin credential verifiable via domain-anchored trust. The PAD's authorship detail SHOULD include the agent's AgentPin identity URI, enabling downstream consumers to verify the agent's identity independently.
 
-#### 8.3. Symbiont Integration
+#### 9.3. Symbiont Integration
 
 Symbiont runtime policies reference both the version string's authorship tag (for fast filtering) and the PAD (for full policy evaluation):
 
@@ -375,13 +562,14 @@ The authorship tag in the version string enables **step 2** — a cheap, local c
 
 ---
 
-### 9. Comparison with Existing Schemes
+### 10. Comparison with Existing Schemes
 
 | Dimension | SemVer | CalVer | EffVer | HashVer | **TrustVer** |
 |---|---|---|---|---|---|
 | Version string | `1.2.3` | `2026.03` | `1.2.3` | `2026.03-a1b2` | **`1.2.3+hrai`** |
 | Effort signal | Indirect | None | Direct | None | **Direct (EffVer)** |
 | Authorship signal | None | None | None | None | **In version string** |
+| Commit-level provenance | None | None | None | None | **Commit convention** |
 | Temporal signal | None | Primary | None | Date prefix | **PAD timestamp** |
 | Source traceability | None | None | None | Git hash | **PAD** |
 | Verification metadata | None | None | None | None | **PAD (append-only)** |
@@ -392,34 +580,41 @@ The authorship tag in the version string enables **step 2** — a cheap, local c
 
 ---
 
-### 10. Adopting TrustVer
+### 11. Adopting TrustVer
 
-#### 10.1. Minimum Viable Adoption
+#### 11.1. Minimum Viable Adoption
 
 1. **Adopt EffVer + authorship tag.** Start versioning releases as `MACRO.MESO.MICRO+AUTHORSHIP`. If you're already loosely following SemVer, this requires only adding the `+tag` suffix and shifting to effort-based increment decisions. Zero tooling changes; zero ecosystem friction.
-2. **Generate PADs.** Produce PAD files in your CI pipeline. Even a minimal PAD (version, artifact hash, authorship detail, CI attestation) is valuable.
-3. **Sign PADs.** Add cryptographic signatures. Sigstore/cosign for CI-produced attestations, ECDSA keys for human attestations.
-4. **Publish PADs.** Make them discoverable via sidecar files or well-known endpoints.
-5. **Enforce policies.** Integrate with trust infrastructure (Symbiont or equivalent) to enforce PAD requirements on your own dependencies.
+2. **Adopt the commit convention.** Start tagging commits with `[authorship]` in subject lines and structured footers. This is the ground-truth layer — everything else derives from it.
+3. **Generate PADs.** Produce PAD files in your CI pipeline. Use `trustver bump` to auto-derive release authorship from the commit history. Even a minimal PAD (version, artifact hash, authorship detail, CI attestation) is valuable.
+4. **Sign PADs.** Add cryptographic signatures. Sigstore/cosign for CI-produced attestations, ECDSA keys for human attestations.
+5. **Publish PADs.** Make them discoverable via sidecar files or well-known endpoints.
+6. **Enforce policies.** Integrate with trust infrastructure (Symbiont or equivalent) to enforce PAD requirements on your own dependencies.
 
-Each step is independently valuable. Step 1 is free. Step 2 adds transparency. Step 3 adds integrity. Step 4 enables ecosystem consumption. Step 5 closes the loop.
+Each step is independently valuable. Step 1 is free. Step 2 builds the provenance habit. Step 3 adds transparency. Step 4 adds integrity. Step 5 enables ecosystem consumption. Step 6 closes the loop.
 
-#### 10.2. Tooling
+#### 11.2. Tooling
 
 A `trustver` CLI tool SHOULD be provided for:
 
-- Bumping version numbers with EffVer semantics and authorship tagging.
-- Generating PADs from build context (CI environment variables, git metadata, AI tool logs).
+- Bumping version numbers with EffVer semantics and auto-derived authorship tagging from commit history.
+- Validating commit messages against the TrustVer commit convention.
+- Generating provenance summaries from commit ranges (`trustver audit v2.3.0..v2.4.0`).
+- Generating PADs from build context (CI environment variables, git metadata, AI tool logs), including commit-level provenance records.
 - Signing PADs (integration with Sigstore, local keys, or HSMs).
 - Validating version strings and PAD structure.
 - Appending attestations to existing PADs.
 - Querying PAD metadata for a given package/version.
 
-CI/CD integrations for GitHub Actions, GitLab CI, and similar platforms SHOULD be provided as thin wrappers around the CLI.
+Companion integrations SHOULD be provided for:
+
+- **Git hooks:** A `commit-msg` hook that validates TrustVer commit convention compliance.
+- **commitlint plugin:** Custom rules for subject line tag and footer field validation.
+- **CI/CD platforms:** GitHub Actions, GitLab CI wrappers around the CLI for automated PAD generation at release time.
 
 ---
 
-### 11. Security Considerations
+### 12. Security Considerations
 
 - **PAD signatures are mandatory for enforcement.** Without signatures, a PAD is advisory only. Trust infrastructure MUST verify signatures before making policy decisions. An unsigned PAD is equivalent to no PAD.
 - **Authorship tags are self-reported claims.** A malicious publisher can claim `h` (human-authored) on AI-generated code. The PAD's authorship detail provides evidence for auditing, but ultimately authorship verification depends on the integrity of the development environment. The version string tag is a convenience signal, not a security boundary — the PAD is the evidence.
@@ -430,7 +625,7 @@ CI/CD integrations for GitHub Actions, GitLab CI, and similar platforms SHOULD b
 
 ---
 
-### 12. SLSA Alignment
+### 13. SLSA Alignment
 
 TrustVer's PAD is designed to complement, not replace, existing supply-chain security frameworks:
 
@@ -442,10 +637,10 @@ PADs MAY include a `slsa-attested` attestation type that explicitly declares the
 
 ---
 
-### 13. Future Work
+### 14. Future Work
 
-- **Automated authorship classification.** Tooling that integrates with IDE telemetry, AI API call logs, and git metadata to automatically determine authorship tags rather than relying on manual declaration.
-- **Differential provenance.** Per-file or per-function provenance tracking within a single PAD, allowing mixed authorship and verification granularity (e.g., "the crypto module is `h` + formally verified; the CLI wrapper is `hrai` + test-verified").
+- **Automated authorship tagging.** The commit convention (§4) defines the data model; the next step is tooling that auto-detects authorship by integrating with IDE telemetry (Cursor/Windsurf session logs), AI API call records, and git diff heuristics — pre-populating the commit footer so developers only need to confirm rather than declare.
+- **Differential provenance.** The commit-level PAD records (§4.7) provide per-commit granularity. The next frontier is per-file or per-function tracking within a single commit, allowing statements like "the crypto module is `h` + formally verified; the CLI wrapper is `hrai` + test-verified" at file-level resolution.
 - **Provenance inheritance.** When a release depends on other TrustVer-versioned packages, computing the effective trust posture of the aggregate. The weakest link determines the floor.
 - **AI model fingerprinting.** Extending authorship metadata to identify specific models, agent configurations, or prompt chains that contributed to a release.
 - **Registry-native PAD support.** Working with npm, PyPI, crates.io, and other registries to embed PAD metadata natively in their APIs and enforce PAD requirements at publish time.
@@ -463,6 +658,7 @@ TrustVer builds directly on the work of:
 - **Taylor Brazelton / miniscruff** — Hash Versioning (HashVer)
 - **The Sigstore project** — Supply chain attestation patterns
 - **SLSA (Supply-chain Levels for Software Artifacts)** — Build provenance framework
+- **Conventional Commits** — Commit message convention
 
 ---
 
