@@ -1,0 +1,3 @@
+package_name = "trustver"
+current_version = "0.1.0+hrai"
+strict = false

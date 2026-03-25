@@ -1,0 +1,46 @@
+{
+  "trustver_spec": "0.3.0",
+  "version": "0.1.0+hrai",
+  "package": "trustver",
+  "timestamp": "2026-03-25T01:50:52Z",
+  "identity": {
+    "artifact_hashes": {},
+    "source": {
+      "repository": "git@github.com:tarnover/TrustVer.git",
+      "commit": "486ebdba61c33c00a16bf301eaa6017f1806d692",
+      "branch": "main"
+    }
+  },
+  "authorship": {
+    "tag": "hrai",
+    "detail": {
+      "ai_model": "claude-opus-4-6",
+      "ai_contribution_pct": 85,
+      "human_reviewers": [
+        "jascha@tarnover.com"
+      ]
+    }
+  },
+  "scope": "stable",
+  "attestations": [
+    {
+      "type": "test-verified",
+      "timestamp": "2026-03-25T01:50:52Z",
+      "detail": {
+        "failed": 0,
+        "passed": 84,
+        "suite": "cargo test"
+      },
+      "attester": "jascha@tarnover.com",
+      "signature": "MEUCIQCzVdsGzwTQZSYmGE7E1vfTrZ2n517U5FqaLVp6WiONpAIgJOHBXo6jIaUTs56RTNvFja0Zd6dYcxX9aKRqkdLr0ms="
+    }
+  ],
+  "signatures": [
+    {
+      "signer": "jascha@tarnover.com",
+      "algorithm": "ECDSA-P256",
+      "key_id": "sha256:0dce8f57de74de3828aac602a61b568f6f3fa971b3821e58306bdeb6e19418a2",
+      "signature": "MEUCIQC1c1xwLuvcNgErLOMDFV9zPHStE26w/vaZLSNloiSSqAIgQDV86HADuN8QHKz6YA2q2uH9PRgPoMeoGYTfvP1CF7w="
+    }
+  ]
+}

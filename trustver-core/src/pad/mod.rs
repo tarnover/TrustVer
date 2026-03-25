@@ -183,9 +183,12 @@ impl PadDocument {
         // Serialize the whole document to a Value first.
         let mut value: Value = serde_json::to_value(self)?;
 
-        // Remove the signatures field.
+        // Remove signatures (computed over this content) and attestations
+        // (append-only mutable per spec §5.2 — release signature covers
+        // only immutable fields so it stays valid as attestations are added).
         if let Value::Object(ref mut map) = value {
             map.remove("signatures");
+            map.remove("attestations");
         }
 
         // Produce canonical JSON (sorted keys, no whitespace).
@@ -324,7 +327,7 @@ pub(crate) mod tests {
     }
 
     #[test]
-    fn pad_signable_content_excludes_signatures() {
+    fn pad_signable_content_excludes_signatures_and_attestations() {
         let mut pad = sample_pad();
         pad.signatures.push(Signature {
             signer: "test@test.com".to_string(),
@@ -332,8 +335,19 @@ pub(crate) mod tests {
             key_id: "abc123".to_string(),
             signature: "fakesig".to_string(),
         });
+        pad.attestations.push(Attestation {
+            type_: "test-verified".to_string(),
+            timestamp: "2026-03-23T14:00:00Z".to_string(),
+            detail: serde_json::json!({}),
+            attester: "ci@test.com".to_string(),
+            signature: None,
+        });
         let content = pad.signable_content().unwrap();
-        assert!(!content.contains("fakesig"));
+        assert!(!content.contains("fakesig"), "signatures should be excluded");
+        assert!(
+            !content.contains("test-verified"),
+            "attestations should be excluded"
+        );
         assert!(content.contains("mylib"));
         // Canonical: no pretty-printing whitespace
         assert!(!content.contains('\n'));
