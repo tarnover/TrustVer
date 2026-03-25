@@ -358,7 +358,10 @@ pub(crate) mod tests {
             signature: None,
         });
         let content = pad.signable_content().unwrap();
-        assert!(!content.contains("fakesig"), "signatures should be excluded");
+        assert!(
+            !content.contains("fakesig"),
+            "signatures should be excluded"
+        );
         assert!(
             !content.contains("test-verified"),
             "attestations should be excluded"

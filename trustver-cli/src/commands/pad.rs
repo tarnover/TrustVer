@@ -214,8 +214,7 @@ pub fn validate(
         if !any_verified && !pad.signatures.is_empty() {
             issues.push(ValidationIssue {
                 severity: Severity::Error,
-                message:
-                    "no signatures could be verified with the provided key".to_string(),
+                message: "no signatures could be verified with the provided key".to_string(),
             });
         }
     }
