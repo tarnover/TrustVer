@@ -146,16 +146,24 @@ pub fn derive_authorship(
     .map(|&t| (t, pct(t)))
     .collect();
 
+    // Total AI-origin percentage (any code produced by AI, regardless of review)
+    let total_ai_pct = ai_pct + hrai_pct + auto_pct;
+
     // 8. Apply threshold rules in order
     let derived = if h_pct >= 95.0 {
         AuthorshipTag::H
-    } else if (ai_pct + hrai_pct) >= 80.0 && all_ai_have_reviewer {
+    } else if (ai_pct + hrai_pct) >= 80.0 && all_ai_have_reviewer && auto_pct == 0.0 {
+        // Only derive hrai if ALL AI code was reviewed — auto commits
+        // are unreviewed by definition and must not inherit the hrai label.
         AuthorshipTag::Hrai
     } else if aih_pct >= 80.0 {
         AuthorshipTag::Aih
     } else if auto_pct >= 80.0 {
         AuthorshipTag::Auto
-    } else if (ai_pct + auto_pct) >= 80.0 {
+    } else if total_ai_pct >= 80.0 {
+        // 80%+ of code is AI-origin (any combination of ai, hrai, auto).
+        // If all AI commits have review and there's no auto, we'd have
+        // matched hrai above — so this path means some AI code is unreviewed.
         AuthorshipTag::Ai
     } else {
         AuthorshipTag::Mix
@@ -277,15 +285,41 @@ mod tests {
     }
 
     #[test]
-    fn auto_commits_dont_block_hrai_derivation() {
+    fn auto_commits_prevent_hrai_derivation() {
         // 85% hrai (with reviewer) + 5% auto (no reviewer) + 10% h
-        // The auto commit should NOT prevent hrai derivation
+        // Auto commits are unreviewed — the release should NOT get hrai label.
+        // 90% is AI-origin (hrai + auto), so it derives as ai.
         let commits = vec![
             commit(Some(AuthorshipTag::Hrai), 850, true),
             commit(Some(AuthorshipTag::Auto), 50, false),
             commit(Some(AuthorshipTag::H), 100, false),
         ];
         let result = derive_authorship(&commits, false).unwrap();
+        assert_eq!(result.tag, AuthorshipTag::Ai);
+    }
+
+    #[test]
+    fn pure_hrai_without_auto_derives_hrai() {
+        // 85% hrai (with reviewer) + 15% h — no auto, so hrai is safe
+        let commits = vec![
+            commit(Some(AuthorshipTag::Hrai), 850, true),
+            commit(Some(AuthorshipTag::H), 150, false),
+        ];
+        let result = derive_authorship(&commits, false).unwrap();
         assert_eq!(result.tag, AuthorshipTag::Hrai);
+    }
+
+    #[test]
+    fn heavy_ai_involvement_derives_ai_not_mix() {
+        // 80% hrai + 5% ai (unreviewed) + 15% h
+        // Total AI = 85%. The unreviewed ai prevents hrai, but 85% AI should
+        // derive as ai, not mix.
+        let commits = vec![
+            commit(Some(AuthorshipTag::Hrai), 800, true),
+            commit(Some(AuthorshipTag::Ai), 50, false),
+            commit(Some(AuthorshipTag::H), 150, false),
+        ];
+        let result = derive_authorship(&commits, false).unwrap();
+        assert_eq!(result.tag, AuthorshipTag::Ai);
     }
 }

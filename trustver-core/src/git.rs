@@ -108,14 +108,14 @@ fn parse_numstats(output: &str) -> HashMap<&str, (u64, u64)> {
     map
 }
 
-/// Parse the `--format=%H%n%s%n%b%n---END-COMMIT---` log output into
+/// Parse the `--format=%H%n%s%n%b%n--trustver-commit-boundary-f47ac10b58cc--` log output into
 /// a list of `(hash, subject, body)` tuples.
 fn parse_log_entries(output: &str) -> Vec<(String, String, String)> {
     let mut result = Vec::new();
     let mut current_lines: Vec<&str> = Vec::new();
 
     for line in output.lines() {
-        if line == "---END-COMMIT---" {
+        if line == "--trustver-commit-boundary-f47ac10b58cc--" {
             if !current_lines.is_empty() {
                 let hash = current_lines.first().copied().unwrap_or("").to_string();
                 let subject = current_lines.get(1).copied().unwrap_or("").to_string();
@@ -162,7 +162,7 @@ pub fn git_log_all(repo_path: &Path) -> Result<Vec<GitCommit>, GitError> {
 
 fn git_log_internal(repo_path: &Path, range: Option<&str>) -> Result<Vec<GitCommit>, GitError> {
     // Build the log command for subject/body.
-    let format = "--format=%H%n%s%n%b%n---END-COMMIT---";
+    let format = "--format=%H%n%s%n%b%n--trustver-commit-boundary-f47ac10b58cc--";
     let mut log_args: Vec<&str> = vec!["log"];
     if let Some(r) = range {
         log_args.push(r);

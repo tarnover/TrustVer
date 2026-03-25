@@ -170,6 +170,8 @@ pub struct PadDocument {
     pub identity: Identity,
     pub authorship: Authorship,
     pub scope: Scope,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub notes: Option<String>,
     #[serde(default)]
     pub attestations: Vec<Attestation>,
     #[serde(default)]
@@ -186,8 +188,20 @@ impl PadDocument {
         // Remove signatures (computed over this content) and attestations
         // (append-only mutable per spec §5.2 — release signature covers
         // only immutable fields so it stays valid as attestations are added).
+        //
+        // We preserve the attestation *count* so that stripping attestations
+        // (e.g., removing a failed audit) invalidates the release signature.
         if let Value::Object(ref mut map) = value {
             map.remove("signatures");
+            let att_count = map
+                .get("attestations")
+                .and_then(|v| v.as_array())
+                .map(|a| a.len())
+                .unwrap_or(0);
+            map.insert(
+                "attestation_count".to_string(),
+                Value::Number(serde_json::Number::from(att_count)),
+            );
             map.remove("attestations");
         }
 
@@ -288,6 +302,7 @@ pub(crate) mod tests {
                 },
             },
             scope: Scope::Stable,
+            notes: None,
             attestations: vec![],
             signatures: vec![],
         }

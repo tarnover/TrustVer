@@ -73,6 +73,10 @@ pub fn verify_pad_signature(
 // ---------------------------------------------------------------------------
 
 /// Verify a `sigstore-cosign` signature by shelling out to `cosign verify-blob`.
+///
+/// Requires `--certificate-identity-regexp` and `--certificate-oidc-issuer` to
+/// prevent accepting signatures from arbitrary Sigstore identities.
+/// The signer identity from the PAD signature is used as the identity regexp.
 fn verify_cosign_signature(pad: &PadDocument, sig: &Signature) -> Result<bool, PadError> {
     use std::process::Command;
     use tempfile::NamedTempFile;
@@ -91,6 +95,16 @@ fn verify_cosign_signature(pad: &PadDocument, sig: &Signature) -> Result<bool, P
     let mut content_file = NamedTempFile::new()?;
     std::io::Write::write_all(&mut content_file, canonical.as_bytes())?;
 
+    // Use the signer identity and the PAD's source repository to constrain
+    // which Sigstore identities are accepted. Without these, any valid
+    // Sigstore signature would pass verification.
+    let identity_regexp = if let Some(ref repo) = pad.identity.source.repository {
+        repo.clone()
+    } else {
+        // Fall back to signer field as identity constraint
+        regex::escape(&sig.signer)
+    };
+
     let status = Command::new("cosign")
         .args([
             "verify-blob",
@@ -99,6 +113,10 @@ fn verify_cosign_signature(pad: &PadDocument, sig: &Signature) -> Result<bool, P
                 .path()
                 .to_str()
                 .ok_or_else(|| PadError::Cosign("invalid bundle path".to_string()))?,
+            "--certificate-identity-regexp",
+            &identity_regexp,
+            "--certificate-oidc-issuer",
+            "https://token.actions.githubusercontent.com",
             content_file
                 .path()
                 .to_str()

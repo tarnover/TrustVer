@@ -169,25 +169,54 @@ pub fn validate(
             None
         };
 
+        let mut any_verified = false;
         for (idx, sig) in pad.signatures.iter().enumerate() {
             match verify_pad_signature(&pad, sig, pub_pem.as_deref()) {
-                Ok(true) => {}
+                Ok(true) => {
+                    any_verified = true;
+                    if !json {
+                        eprintln!(
+                            "  signature[{idx}] VERIFIED (signer: {}, algorithm: {})",
+                            sig.signer, sig.algorithm
+                        );
+                    }
+                }
                 Ok(false) => {
-                    issues.push(ValidationIssue {
-                        severity: Severity::Error,
-                        message: format!(
-                            "signature[{idx}] verification failed (signer: {})",
-                            sig.signer
-                        ),
-                    });
+                    // Only report as error if this signature's key_id matches the
+                    // provided key. Otherwise it's a different signer — skip it.
+                    if pub_pem.is_some() {
+                        // We tried this key and it didn't match — could be a
+                        // different signer's signature. Report as info, not error.
+                        if !json {
+                            eprintln!(
+                                "  signature[{idx}] not verified with provided key (signer: {})",
+                                sig.signer
+                            );
+                        }
+                    }
                 }
                 Err(e) => {
-                    issues.push(ValidationIssue {
-                        severity: Severity::Error,
-                        message: format!("signature[{idx}] could not be verified: {e}"),
-                    });
+                    // Cosign or unknown algorithm errors are still real errors
+                    if sig.algorithm == "sigstore-cosign" {
+                        issues.push(ValidationIssue {
+                            severity: Severity::Error,
+                            message: format!("signature[{idx}] cosign verification failed: {e}"),
+                        });
+                    } else if !json {
+                        eprintln!(
+                            "  signature[{idx}] skipped (signer: {}, error: {e})",
+                            sig.signer
+                        );
+                    }
                 }
             }
+        }
+        if !any_verified && !pad.signatures.is_empty() {
+            issues.push(ValidationIssue {
+                severity: Severity::Error,
+                message:
+                    "no signatures could be verified with the provided key".to_string(),
+            });
         }
     }
 

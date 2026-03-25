@@ -161,6 +161,7 @@ pub fn generate_pad(
         },
         authorship,
         scope: options.scope,
+        notes: None,
         attestations: vec![],
         signatures: vec![],
     };
