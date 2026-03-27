@@ -2,7 +2,7 @@
 
 ## Provenance-Aware Versioning for AI-Era Software
 
-**Status:** Draft  
+**Status:** Implemented  
 **Authors:** Jascha Wanger (Tarnover LLC / ThirdKey AI)  
 **Date:** 2026-03-23  
 **License:** CC-BY-SA 4.0  
